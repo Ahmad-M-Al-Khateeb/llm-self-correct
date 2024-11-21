@@ -16,11 +16,11 @@ second_stage_prompt = ('There might be an error in the solution above because of
     
 def first_stage(model, problem):
     prompt = first_stage_prompt + problem
-    return model(prompt)
+    return model_predict(model, prompt)
 
 def second_stage(model, problem):
     prompt = second_stage_prompt + problem
-    return model(prompt)
+    return model_predict(model, prompt)
 
 def solve(model, problem):
     # First stage response
@@ -34,7 +34,7 @@ def solve(model, problem):
 def read_json(fname):
     with open(fname, 'r') as fp:
         try:
-            return json.load(fname)
+            return json.load(fp)
         except Exception as e:
             print(f"Error loading JSON from {fname}", e)
             raise e
@@ -54,7 +54,7 @@ def kl_divergence(response, base_response):
     return F.kl_div(resp, base, reduction="batchmean")
 
 
-if __name__ == "__main__":
+def main():
     model = None # pytorch model?
     base_model = None # base (unchanged) model
 
@@ -74,6 +74,40 @@ if __name__ == "__main__":
     eval = evaluate_answer(y2, problem_data["solution"])
 
     # Calculate final reward
+
+### Temporary for ollama models
+# ollama model code
+def model_predict(model, prompt):
+    import ollama
+    response = ollama.chat(model="llama3.2", messages=[
+    {
+        'role': 'user',
+        'content': prompt,
+    },
+    ])
+
+    return response["message"]["content"]
+
+def test_ollama(model, question_file):
+    problem_data = read_json(question_file)
+    y1, y2 = solve(model, problem_data["problem"])
+    answers = [y1, y2]
+
+    eval1 = evaluate_answer(y1, problem_data["solution"])
+    eval2 = evaluate_answer(y2, problem_data["solution"])
+    evals = [eval1, eval2]
+    
+    return evals, answers
+
+
+if __name__ == "__main__":
+    model = "llama3.2"
+    problem_file = "MATH/train/number_theory/8.json"
+    evals, answers = test_ollama(model, problem_file)
+
+    print(evals)
+    print(answers[0])
+    print("Second answer:\n", answers[1])
     
 
 
